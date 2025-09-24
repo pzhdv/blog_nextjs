@@ -1,9 +1,9 @@
-'use client'
+"use client"
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import ThemeToggle from '@/components/ThemeToggle'
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import ThemeToggle from "@/components/ThemeToggle"
 
 type LinkType = {
   link: string
@@ -11,16 +11,16 @@ type LinkType = {
 }
 const navList: LinkType[] = [
   {
-    link: '/',
-    title: '首页',
+    link: "/",
+    title: "首页",
   },
   {
-    link: '/category',
-    title: '分类',
+    link: "/category",
+    title: "分类",
   },
   {
-    link: '/about',
-    title: '关于我',
+    link: "/about",
+    title: "关于我",
   },
 ]
 
@@ -50,7 +50,7 @@ export default function Header() {
           <div className="flex justify-between items-center">
             {/* 左侧品牌LOGO */}
             <div className="flex items-center">
-              <a href="/" className="flex items-center space-x-2">
+              <Link href="/" className="flex items-center space-x-2">
                 <svg
                   className="h-8 w-8 text-blue-600 dark:text-blue-400"
                   fill="none"
@@ -64,15 +64,13 @@ export default function Header() {
                     d="M13 10V3L4 14h7v7l9-11h-7z"
                   />
                 </svg>
-                <span className="text-xl font-bold text-gray-800 dark:text-white">
-                  PzhBlog
-                </span>
-              </a>
+                <span className="text-xl font-bold text-gray-800 dark:text-white">PzhBlog</span>
+              </Link>
             </div>
 
             {/* 桌面导航 */}
             <div className="hidden md:flex items-center space-x-12">
-              {navList.map(item => {
+              {navList.map((item) => {
                 const isActive = pathname === item.link
                 return (
                   <Link
@@ -80,19 +78,17 @@ export default function Header() {
                     href={item.link}
                     className={`text-md relative py-2 transition-colors duration-300 ${
                       isActive
-                        ? 'text-blue-600 dark:text-blue-400 font-medium'
-                        : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+                        ? "text-blue-600 dark:text-blue-400 font-medium"
+                        : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
                     }`}
                   >
                     <div className="relative group">
-                      <span className="relative z-10 block px-2 py-2">
-                        {item.title}
-                      </span>
+                      <span className="relative z-10 block px-2 py-2">{item.title}</span>
 
                       {/* 动态下划线 (自动适配暗黑模式) */}
                       <span
                         className={`absolute bottom-0 left-0 w-full h-[2px] origin-center scale-x-0 bg-gradient-to-r from-blue-400 to-purple-500 dark:from-blue-500 dark:to-purple-600 transition-transform duration-300 ${
-                          isActive ? 'scale-x-105' : 'group-hover:scale-x-105'
+                          isActive ? "scale-x-105" : "group-hover:scale-x-105"
                         }`}
                       />
                     </div>
@@ -134,13 +130,13 @@ export default function Header() {
           {shouldRenderMenu && (
             <div
               className={`md:hidden fixed inset-0 z-50 bg-black/30 transition-opacity
-                 ${isMenuOpen ? 'opacity-100' : 'opacity-0'}`}
+                 ${isMenuOpen ? "opacity-100" : "opacity-0"}`}
               onClick={() => setIsMenuOpen(false)}
             >
               <div
                 className={`absolute right-0 top-0 h-full w-3/4 bg-white dark:bg-gray-800 shadow-xl transform transition-transform duration-500
-                   ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}
-                onClick={e => e.stopPropagation()}
+                   ${isMenuOpen ? "translate-x-0" : "translate-x-full"}`}
+                onClick={(e) => e.stopPropagation()}
               >
                 {/* 关闭按钮 */}
                 <div className="flex justify-end mt-4 mr-4">
@@ -164,7 +160,7 @@ export default function Header() {
                 </div>
                 {/* 菜单内容 */}
                 <div className="bg-white dark:bg-gray-800 py-4 pl-10 space-y-4  ">
-                  {navList.map(item => (
+                  {navList.map((item) => (
                     <Link
                       key={item.link}
                       href={item.link}

@@ -18,7 +18,11 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "./src/assets/fonts/iconfont.js"
     ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn", // 👈 这里 any 报警告
+    },
   },
 ];
 
