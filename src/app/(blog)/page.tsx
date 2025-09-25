@@ -41,28 +41,33 @@ export default function Home() {
 
     isFromDetailPage, // 是否是从详情页面返回，用于处理返回逻辑
     setIsFromDetailPage, // 设置是否是从详情页面返回的方法
+
+    deviceLoadCount, // 设备加载次数，确保设备类型稳定后再进行数据请求
+    setDeviceLoadCount, // 设置设备加载次数的方法
   } = useHomeStore()
   const router = useRouter()
   const isMobile = useDeviceType()
-  const previousIsMobileRef = useRef(isMobile) // 使用 useRef 跟踪上一次的设备状态，避免不必要的重新渲染
+
+  const isScrollToRef = useRef(false) // 标记是否已经滚动过，避免重复滚动
   const [activeTagId, setActiveTagId] = useState<number>() // 激活的标签Id
   const [queryParams, setQueryParams] = useState<QueryParams>({
     pageSize: isMobile ? Mobile_PageSize : PC_PageSize,
     pageNum: currentPage,
   })
 
-  // 实时响应式PC-移动 查询文章列表
+  //  查询文章列表
   useEffect(() => {
-    const isFirstLoading = !hasQueryArticleList // 是否是第一次加载
-    const deviceTypeHasChanged = hasQueryArticleList && isMobile !== previousIsMobileRef.current // 设备是否切换
-
-    // 如果两个条件都不满足，则什么都不做
-    if (!isFirstLoading && !deviceTypeHasChanged) {
+    // console.log(`isMobile:${isMobile},设备加载次数:${deviceLoadCount}`)
+    if (deviceLoadCount !== 1) {
+      setDeviceLoadCount(deviceLoadCount + 1)
+      console.log("不是第二次加载、说明设备类型还不稳定、不发送请求查询数据")
       return
     }
-
-    //  更新设备状态
-    previousIsMobileRef.current = isMobile
+    // 是否是第一次查询数据
+    if (hasQueryArticleList) {
+      console.log("已经发出过请求了、不用再次发送请求查询数据")
+      return
+    }
 
     // 准备新的查询参数并调用查询函数
     const newParams = {
@@ -72,7 +77,7 @@ export default function Home() {
     setQueryParams(newParams) // 更新本地 state
     queryArticleList(newParams) // 调用查询函数查询文章列表
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasQueryArticleList, isMobile])
+  }, [hasQueryArticleList, isMobile, deviceLoadCount])
 
   // 查询右边侧边栏数据
   useEffect(() => {
@@ -86,6 +91,7 @@ export default function Home() {
   useEffect(() => {
     // 如果是移动端
     if (isMobile) {
+      if (isScrollToRef.current) return // 已经滚动过了，就不再滚动
       // 如果是从详情页面返回的，则滚动到离开页面之前的位置
       if (isFromDetailPage) {
         window.scrollTo(0, scrollTop)
@@ -93,15 +99,16 @@ export default function Home() {
         // 否则，滚动到顶部
         window.scrollTo(0, 0)
       }
+      isScrollToRef.current = true // 标记已经滚动过了
     }
 
     // 在组件卸载时，重置 isFromDetailPage 状态
     return () => {
-      console.log("组件卸载")
       setIsFromDetailPage(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, scrollTop, isFromDetailPage])
+
   // todo 通用的更新查询参数和文章列表请求
   const updateAndRefetch = (newQueryPart: Partial<QueryParams>) => {
     // 将新的查询参数部分与旧的参数合并
@@ -138,8 +145,11 @@ export default function Home() {
 
   // ! 跳转文章详情
   const toDetailPage = (articleId: number) => {
+    // 保存当前滚动位置
+    setScrollTop(window.scrollY)
+    // 标记来源页面
     localStorage.setItem("from", "home")
-    setScrollTop(window.scrollY) // 保存离开之前滚动位置
+    // 跳转到详情页
     router.push(`/detail/${articleId}`)
   }
 
@@ -196,7 +206,7 @@ export default function Home() {
           <article
             onClick={() => toDetailPage(article.articleId as number)}
             key={article.articleId}
-            className="rounded-lg overflow-hidden transition-all duration-300 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 shadow-md hover:shadow-xl"
+            className="rounded-lg overflow-hidden transition-all duration-300 bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 shadow-md hover:shadow-xl cursor-pointer"
           >
             {/* 封面图片 */}
 

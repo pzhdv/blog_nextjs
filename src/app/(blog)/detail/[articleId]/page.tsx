@@ -50,20 +50,23 @@ const BlogDetail = ({ params }: { params: Promise<{ articleId: string }> }) => {
       }
     }
 
-    // 获取来自页面
-    const fromPage = localStorage.getItem("from") || "unknown"
-    // localStorage.removeItem("from") // 用完即删
-    // 首页跳转过来的
-    if (fromPage && fromPage === "home") {
-      setIsFromDetailPageToHome(true)
-    } else if (fromPage && fromPage === "category") {
-      setIsFromDetailPageToCategory(true)
-    }
-
-    // id合法
+    // id合法性检查
     if (isNumeric(articleId)) {
       window.scrollTo(0, 0) // 滚动到页面顶部
       getArticleById()
+      
+      // 获取来自页面并设置返回状态
+      const fromPage = localStorage.getItem("from") || "unknown"
+      console.log('详情页面来源:', fromPage)
+      
+      // 立即设置状态，让来源页面知道用户即将返回
+      if (fromPage === "home") {
+        console.log('设置首页返回状态')
+        setIsFromDetailPageToHome(true)
+      } else if (fromPage === "category") {
+        console.log('设置分类页返回状态')
+        setIsFromDetailPageToCategory(true)
+      }
     } else {
       setLoading(false)
     }
@@ -78,7 +81,11 @@ const BlogDetail = ({ params }: { params: Promise<{ articleId: string }> }) => {
           <div className="max-w-full px-4 sm:px-6 lg:px-8">
             <div className="h-16 flex items-center">
               <button
-                onClick={() => router.back()}
+                onClick={() => {
+                  // 清除来源标记
+                  localStorage.removeItem("from")
+                  router.back()
+                }}
                 className="hover:cursor-pointer flex items-center gap-2 text-gray-600 dark:text-gray-400  hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
               >
                 <svg

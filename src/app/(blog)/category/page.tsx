@@ -40,6 +40,9 @@ export default function BlogCategoryPage() {
     isFromDetailPage, // 是否是从详情页面返回，用于处理返回逻辑
     setIsFromDetailPage, // 设置是否是从详情页面返回
 
+    deviceLoadCount, // 设备加载次数，确保设备类型稳定后再进行数据请求
+    setDeviceLoadCount, // 设置设备加载次数的方法
+
     expandedCategories, // 展开/折叠的分类，记录哪些分类被展开或折叠
     setExpandedCategories, // 设置展开/折叠的分类
 
@@ -51,11 +54,9 @@ export default function BlogCategoryPage() {
 
     scrollTop, // 滚动高度，用于记录用户滚动的位置
     setScrollTop, // 设置滚动高度
-
-    hasQueryArticleList, // 是否已经查询过文章列表，用于避免重复查询
   } = useCategoryStore()
 
-  const previousIsMobileRef = useRef(isMobile) // 使用 useRef 跟踪上一次的设备状态，避免不必要的重新渲染
+  const isScrollToRef = useRef(false) // 标记是否已经滚动过，避免重复滚动
   const [queryParams, setQueryParams] = useState<QueryParams>({
     pageSize: isMobile ? Mobile_PageSize : PC_PageSize,
     pageNum: currentPage,
@@ -64,38 +65,28 @@ export default function BlogCategoryPage() {
 
   // 初始化查询
   useEffect(() => {
-    if (!hasInitSearch) {
-      initFetch(ROOT_CATEGORY_ID, queryParams)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasInitSearch, queryParams])
-
-  // 实时响应式PC-移动 查询文章列表
-  useEffect(() => {
-    const isFirstLoading = !hasQueryArticleList // 是否是第一次加载
-    const deviceTypeHasChanged = hasQueryArticleList && isMobile !== previousIsMobileRef.current // 设备是否切换
-
-    // 如果两个条件都不满足，则什么都不做
-    if (!isFirstLoading && !deviceTypeHasChanged) {
+    // console.log(`isMobile:${isMobile},设备加载次数:${deviceLoadCount}`)
+    if (deviceLoadCount !== 1) {
+      setDeviceLoadCount(deviceLoadCount + 1)
+      console.log("不是第二次加载、说明设备类型还不稳定、不发送请求查询数据")
       return
     }
 
-    //  更新设备状态
-    previousIsMobileRef.current = isMobile
-
-    // 准备新的查询参数并调用查询函数
-    const newParams = {
-      pageSize: isMobile ? Mobile_PageSize : PC_PageSize,
-      pageNum: 1, // 切换设备时、或第一次查询,重置到第一页
+    if (!hasInitSearch) {
+      // 准备新的查询参数并调用查询函数
+      const newParams = {
+        ...queryParams,
+        pageSize: isMobile ? Mobile_PageSize : PC_PageSize,
+      }
+      initFetch(ROOT_CATEGORY_ID, newParams)
     }
-    setQueryParams(newParams) // 更新本地 state
-    queryArticleList(newParams) // 调用查询函数查询文章列表
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasQueryArticleList, isMobile])
+  }, [hasInitSearch, queryParams, deviceLoadCount, isMobile])
 
   // 处理分类树默认展开折叠 PC - 全部展开  Mobile - 全部折叠
   useEffect(() => {
     const handleCategoriesExpansion = () => {
+      console.log("isMobile", isMobile)
       if (isMobile) {
         // Mobile - 全部折叠
         const allCollapsed = articleCategoryList.reduce((acc, category) => {
@@ -112,15 +103,20 @@ export default function BlogCategoryPage() {
         setExpandedCategories(allExpanded)
       }
     }
-    // 处理展开折叠
-    handleCategoriesExpansion()
+    if (deviceLoadCount === 1 && !hasInitSearch) {
+      console.log("初始话状态、且设备类型已经稳定")
+      // 处理展开折叠
+      handleCategoriesExpansion()
+    }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMobile, articleCategoryList])
+  }, [isMobile, articleCategoryList, deviceLoadCount, hasInitSearch])
 
   // 处理位置
   useEffect(() => {
     // 如果是移动端
     if (isMobile) {
+      if (isScrollToRef.current) return // 已经滚动过了，就不再滚动
       // 如果是从详情页面返回的，则滚动到离开页面之前的位置
       if (isFromDetailPage) {
         window.scrollTo(0, scrollTop)
@@ -128,6 +124,7 @@ export default function BlogCategoryPage() {
         // 否则，滚动到顶部
         window.scrollTo(0, 0)
       }
+      isScrollToRef.current = true // 标记已经滚动过了
     }
     // 在组件卸载时，重置 isFromDetailPage 状态
     return () => {
@@ -201,8 +198,11 @@ export default function BlogCategoryPage() {
 
   // !跳转文章详情
   const toDetailPage = (articleId: number) => {
-    setScrollTop(window.scrollY) // 保存离开之前滚动位置
+    // 保存当前滚动位置
+    setScrollTop(window.scrollY)
+    // 标记来源页面
     localStorage.setItem("from", "category")
+    // 跳转到详情页
     router.push(`/detail/${articleId}`)
   }
 

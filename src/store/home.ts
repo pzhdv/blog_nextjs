@@ -1,5 +1,5 @@
-import { create, type StateCreator } from 'zustand'
-import { devtools } from 'zustand/middleware'
+import { create, type StateCreator } from "zustand"
+import { devtools } from "zustand/middleware"
 
 import {
   queryArticleTagList,
@@ -8,13 +8,13 @@ import {
   queryArticleCategoryTotal,
   queryArticlePublishDateList,
   queryHomePageArticleList,
-} from '@/api'
+} from "@/api"
 import type {
   Article,
   ArticleTag,
   BlogAuthor,
   HomePageQueryArticleListParams as QueryParams,
-} from '@/types'
+} from "@/types"
 
 // 定义状态类型
 type State = {
@@ -30,12 +30,14 @@ type State = {
   hasQueryArticleList: boolean // 是否已经查询过文章列表了
   articleList: Article[] // 文章列表
   currentPage: number // 当前页码
+  pageSize: number // 每页条数
   totalPage: number // 总分页数
   loading: boolean // 是否是加载状态
   hasMore: boolean // 是否还有更多
   scrollTop: number // 滚动高度
 
   isFromDetailPage: boolean // 是否是从详情页面返回
+  deviceLoadCount: number // 设备加载次数
 }
 
 // 定义操作类型
@@ -47,6 +49,7 @@ type Actions = {
   setScrollTop: (scrollTop: number) => void // 设置滚动高度
 
   setIsFromDetailPage: (isFromDetailPage: boolean) => void // 设置是否是从详情页面返回
+  setDeviceLoadCount: (deviceLoadCount: number) => void // 设置设备加载次数
 }
 
 // 初始状态
@@ -61,28 +64,34 @@ const initialState: State = {
   hasQueryArticleList: false,
   articleList: [],
   currentPage: 1,
+  pageSize: 10,
   totalPage: 0,
   loading: true,
   hasMore: false,
   scrollTop: 0,
 
   isFromDetailPage: false,
+  deviceLoadCount: 0, // 设备加载次数
 }
 
 // 创建首页页面数据store 核心逻辑
 const storeCreator: StateCreator<State & Actions> = (set, get) => ({
   ...initialState,
-  setScrollTop: scrollTop => {
+  setScrollTop: (scrollTop) => {
     set({ scrollTop })
   },
-  setIsFromDetailPage: isFromDetailPage => {
+  setIsFromDetailPage: (isFromDetailPage) => {
     set({ isFromDetailPage })
   },
-  queryArticleList: async queryParams => {
+  setDeviceLoadCount: (deviceLoadCount) => {
+    set({ deviceLoadCount })
+  },
+  queryArticleList: async (queryParams) => {
     try {
-      console.log('查询文章列表')
+      console.log("查询文章列表")
       set({ loading: true })
       const res = await queryHomePageArticleList(queryParams)
+      const pageSize = res.data.size //每页条数
       const currentPage = res.data.current //当前页
       const totalPage = res.data.pages //总页数
       const hasMore = res.data.current < res.data.pages // 判断是否还有更多数据
@@ -90,31 +99,31 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
       set({
         totalPage,
         currentPage,
+        pageSize,
         articleList,
         hasMore,
         hasQueryArticleList: true,
       })
     } catch (error) {
-      console.error('查询首页文章列表出错:', error)
+      console.error("查询首页文章列表出错:", error)
     } finally {
       set({ loading: false })
     }
   },
   queryRightSiderData: async () => {
     try {
-      console.log('查询右侧侧边栏数据')
+      console.log("查询右侧侧边栏数据")
       // 并行加载所有数据
-      const [authorRes, tagRes, totalRes, categoryRes, dateRes] =
-        await Promise.all([
-          queryBlogAuthor(),
-          queryArticleTagList(),
-          queryArticleTotal(),
-          queryArticleCategoryTotal(),
-          queryArticlePublishDateList(),
-        ])
+      const [authorRes, tagRes, totalRes, categoryRes, dateRes] = await Promise.all([
+        queryBlogAuthor(),
+        queryArticleTagList(),
+        queryArticleTotal(),
+        queryArticleCategoryTotal(),
+        queryArticlePublishDateList(),
+      ])
 
       // 处理文章发布时间列表
-      const dateList = dateRes?.data?.map(d => ({ date: new Date(d) })) || []
+      const dateList = dateRes?.data?.map((d) => ({ date: new Date(d) })) || []
 
       // 调用 set 方法进行状态的赋值
       set({
@@ -127,25 +136,26 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
         loading: false,
       })
     } catch (error) {
-      console.error('侧边栏数据请求失败:', error)
+      console.error("侧边栏数据请求失败:", error)
       set({
         hasQueryRightSiderData: false,
       })
     }
   },
-  loadMore: async queryParams => {
+  loadMore: async (queryParams) => {
     try {
-      const { loading, currentPage: pageNum } = get()
+      const { loading, currentPage: pageNum, pageSize } = get()
       if (loading) {
         return
       }
-      console.log('上拉加载更多')
+      console.log("上拉加载更多")
       set({ loading: true })
       // 模拟网络延迟 产生加载动画
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 500))
       const params = {
         ...queryParams,
         pageNum: pageNum + 1,
+        pageSize,
       }
       const res = await queryHomePageArticleList(params)
       // 总页数
@@ -154,14 +164,14 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
       const currentPage = res.data.current
       // 判断是否还有更多数据
       const hasMore = res.data.current < res.data.pages
-      set(state => ({
+      set((state) => ({
         hasMore,
         totalPage,
         currentPage,
         articleList: [...state.articleList, ...res.data.records],
       }))
     } catch (error) {
-      console.error('查询更多失败', error)
+      console.error("查询更多失败", error)
     } finally {
       set({ loading: false })
     }
@@ -169,10 +179,10 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
 })
 
 const useHomeStore =
-  process.env.NODE_ENV === 'development'
+  process.env.NODE_ENV === "development"
     ? create<State & Actions>()(
         devtools(storeCreator, {
-          name: 'HomeStore', // 开发环境显示名称
+          name: "HomeStore", // 开发环境显示名称
           enabled: true, // 显式启用（可选）
         }),
       )
