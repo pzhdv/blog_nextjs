@@ -21,8 +21,8 @@ type State = {
   expandedCategories: Record<string, boolean> // 展开/折叠的分类，记录哪些分类被展开或折叠
 
   // 文章数据
+  hasQueryArticleList: boolean // 是否已经查询过文章列表，避免重复查询
   articleList: Article[] // 文章列表，存储当前分类下的文章
-  pageSize: number // 每页条数
   currentPage: number // 当前页码，用于分页显示文章
   totalPage: number // 总分页数，表示文章列表的总页数
   loading: boolean // 是否正在加载数据，用于显示加载动画
@@ -30,7 +30,7 @@ type State = {
   scrollTop: number // 滚动高度，用于记录用户滚动的位置
 
   isFromDetailPage: boolean // 是否是从详情页面返回，用于处理返回逻辑
-  deviceLoadCount: number // 设备加载次数
+  preDeviceValue: "pc" | "mobile" // 设备状态 默认PC  用于屏幕实时响应式判断、记录前一个设备状态
 }
 
 // 定义操作类型
@@ -47,7 +47,7 @@ type Actions = {
   setScrollTop: (scrollTop: number) => void // 设置滚动高度
 
   setIsFromDetailPage: (isFromDetailPage: boolean) => void // 设置是否是从详情页面返回
-  setDeviceLoadCount: (deviceLoadCount: number) => void // 设置设备加载次数
+  setPreDeviceValue: (preDeviceValue: "pc" | "mobile") => void // 修改设备状态
 }
 
 // 初始状态
@@ -62,16 +62,16 @@ const initialState: State = {
   currentCategoryPathList: [],
   expandedCategories: {},
 
+  hasQueryArticleList: true,
   articleList: [],
   currentPage: 1,
-  pageSize: 10,
   totalPage: 0,
   loading: true,
   hasMore: false,
   scrollTop: 0,
 
   isFromDetailPage: false,
-  deviceLoadCount: 0, // 设备加载次数
+  preDeviceValue: "pc",
 }
 
 // 创建分类页面数据store 核心逻辑
@@ -94,10 +94,9 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
   setIsFromDetailPage: (isFromDetailPage) => {
     set({ isFromDetailPage })
   },
-  setDeviceLoadCount: (deviceLoadCount) => {
-    set({ deviceLoadCount })
+  setPreDeviceValue: (preDeviceValue) => {
+    set({ preDeviceValue })
   },
-
   initFetch: async (parentId, queryParams) => {
     try {
       console.log("查询分类及文字列表")
@@ -117,7 +116,6 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
           categoryIds,
         })
 
-        const pageSize = articleRes.data.size //每页条数
         const currentPage = articleRes.data.current // 当前页
         const totalPage = articleRes.data.pages // 总页数
         const hasMore = articleRes.data.current < articleRes.data.pages // 判断是否还有更多数据
@@ -130,7 +128,6 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
           currentCategoryPathList,
           categoryIds,
           currentPage,
-          pageSize,
           totalPage,
           hasMore,
           articleList,
@@ -140,6 +137,7 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
     } catch (error) {
       console.error("分类页面 查询左侧分类树及文章列表请求失败:", error)
       set({
+        hasQueryArticleList: false,
         hasInitSearch: false,
       })
     } finally {
@@ -161,6 +159,7 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
         currentPage,
         articleList,
         hasMore,
+        hasQueryArticleList: true,
       })
     } catch (error) {
       console.error("查询首页文章列表出错:", error)
@@ -171,7 +170,7 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
 
   loadMore: async (queryParams) => {
     try {
-      const { loading, currentPage: pageNum, pageSize } = get()
+      const { loading, currentPage: pageNum } = get()
       if (loading) {
         return
       }
@@ -182,7 +181,6 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
       const params = {
         ...queryParams,
         pageNum: pageNum + 1,
-        pageSize,
       }
       const res = await queryCategoryPageArticleList(params)
       // 总页数

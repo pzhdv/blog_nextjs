@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, use } from "react"
+import { useEffect, useState, use, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { queryArticleById } from "@/api"
 
@@ -19,24 +19,18 @@ const BlogDetail = ({ params }: { params: Promise<{ articleId: string }> }) => {
   const [article, setArticle] = useState<Article | undefined>()
   const [loading, setLoading] = useState(true)
 
-  // const
-  useEffect(() => {
-    /**
-     * 判断是否是数字或数字字符 且大于0
-     * @param value
-     * @returns
-     */
-    const isNumeric = (value: string | number | undefined | null): boolean => {
-      if (typeof value === "number") {
-        // 检查是否为数字且大于 0
-        return !isNaN(value) && Number.isFinite(value) && value > 0
-      } else if (typeof value === "string") {
-        // 检查是否为数字字符串且大于 0
-        return /^[1-9][0-9]*$/.test(value)
-      }
-      return false
+  // 数字验证函数
+  const isNumeric = (value: string | number | undefined | null): boolean => {
+    if (typeof value === "number") {
+      return !isNaN(value) && Number.isFinite(value) && value > 0
+    } else if (typeof value === "string") {
+      return /^[1-9][0-9]*$/.test(value)
     }
+    return false
+  }
 
+  // 获取文章详情
+  useEffect(() => {
     const getArticleById = async () => {
       try {
         setLoading(true)
@@ -50,29 +44,32 @@ const BlogDetail = ({ params }: { params: Promise<{ articleId: string }> }) => {
       }
     }
 
-    // id合法性检查
     if (isNumeric(articleId)) {
-      window.scrollTo(0, 0) // 滚动到页面顶部
+      window.scrollTo(0, 0)
       getArticleById()
-      
-      // 获取来自页面并设置返回状态
-      const fromPage = localStorage.getItem("from") || "unknown"
-      console.log('详情页面来源:', fromPage)
-      
-      // 立即设置状态，让来源页面知道用户即将返回
-      if (fromPage === "home") {
-        console.log('设置首页返回状态')
-        setIsFromDetailPageToHome(true)
-      } else if (fromPage === "category") {
-        console.log('设置分类页返回状态')
-        setIsFromDetailPageToCategory(true)
-      }
     } else {
       setLoading(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleId])
 
+  // 处理来源页面状态设置
+  useEffect(() => {
+    if (isNumeric(articleId)) {
+      const fromPage = localStorage.getItem("from") || "unknown"
+      console.log("详情页面来源:", fromPage)
+
+      if (fromPage === "home") {
+        setIsFromDetailPageToHome(true)
+      } else if (fromPage === "category") {
+        setIsFromDetailPageToCategory(true)
+      }
+    }
+  }, [articleId, setIsFromDetailPageToHome, setIsFromDetailPageToCategory])
+
+  const handleBack = () => {
+    localStorage.removeItem("from") // 清除来源标记
+    router.back()
+  }
   // 渲染导航栏
   const renderNavigationBar = () => {
     return (
@@ -81,11 +78,7 @@ const BlogDetail = ({ params }: { params: Promise<{ articleId: string }> }) => {
           <div className="max-w-full px-4 sm:px-6 lg:px-8">
             <div className="h-16 flex items-center">
               <button
-                onClick={() => {
-                  // 清除来源标记
-                  localStorage.removeItem("from")
-                  router.back()
-                }}
+                onClick={handleBack}
                 className="hover:cursor-pointer flex items-center gap-2 text-gray-600 dark:text-gray-400  hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
               >
                 <svg
@@ -139,7 +132,7 @@ const BlogDetail = ({ params }: { params: Promise<{ articleId: string }> }) => {
       <article className="space-y-8 ">
         {/* 标题区 */}
         <div className="space-y-6">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 tracking-tight leading-tight">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 tracking-tight leading-tight break-words">
             {article?.title}
           </h1>
 

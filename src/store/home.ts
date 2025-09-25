@@ -30,14 +30,13 @@ type State = {
   hasQueryArticleList: boolean // 是否已经查询过文章列表了
   articleList: Article[] // 文章列表
   currentPage: number // 当前页码
-  pageSize: number // 每页条数
   totalPage: number // 总分页数
   loading: boolean // 是否是加载状态
   hasMore: boolean // 是否还有更多
   scrollTop: number // 滚动高度
 
   isFromDetailPage: boolean // 是否是从详情页面返回
-  deviceLoadCount: number // 设备加载次数
+  deviceStatue: "pc" | "mobile" // 设备状态 默认PC  用于屏幕实时响应式判断、记录前一个设备状态
 }
 
 // 定义操作类型
@@ -49,7 +48,8 @@ type Actions = {
   setScrollTop: (scrollTop: number) => void // 设置滚动高度
 
   setIsFromDetailPage: (isFromDetailPage: boolean) => void // 设置是否是从详情页面返回
-  setDeviceLoadCount: (deviceLoadCount: number) => void // 设置设备加载次数
+
+  setDeviceStatue: (deviceStatue: "pc" | "mobile") => void // 修改设备状态
 }
 
 // 初始状态
@@ -64,14 +64,13 @@ const initialState: State = {
   hasQueryArticleList: false,
   articleList: [],
   currentPage: 1,
-  pageSize: 10,
   totalPage: 0,
   loading: true,
   hasMore: false,
   scrollTop: 0,
 
   isFromDetailPage: false,
-  deviceLoadCount: 0, // 设备加载次数
+  deviceStatue: "pc",
 }
 
 // 创建首页页面数据store 核心逻辑
@@ -83,15 +82,16 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
   setIsFromDetailPage: (isFromDetailPage) => {
     set({ isFromDetailPage })
   },
-  setDeviceLoadCount: (deviceLoadCount) => {
-    set({ deviceLoadCount })
+
+  setDeviceStatue: (deviceStatue) => {
+    set({ deviceStatue })
   },
+
   queryArticleList: async (queryParams) => {
     try {
       console.log("查询文章列表")
       set({ loading: true })
       const res = await queryHomePageArticleList(queryParams)
-      const pageSize = res.data.size //每页条数
       const currentPage = res.data.current //当前页
       const totalPage = res.data.pages //总页数
       const hasMore = res.data.current < res.data.pages // 判断是否还有更多数据
@@ -99,7 +99,6 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
       set({
         totalPage,
         currentPage,
-        pageSize,
         articleList,
         hasMore,
         hasQueryArticleList: true,
@@ -144,7 +143,7 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
   },
   loadMore: async (queryParams) => {
     try {
-      const { loading, currentPage: pageNum, pageSize } = get()
+      const { loading, currentPage: pageNum } = get()
       if (loading) {
         return
       }
@@ -155,7 +154,6 @@ const storeCreator: StateCreator<State & Actions> = (set, get) => ({
       const params = {
         ...queryParams,
         pageNum: pageNum + 1,
-        pageSize,
       }
       const res = await queryHomePageArticleList(params)
       // 总页数

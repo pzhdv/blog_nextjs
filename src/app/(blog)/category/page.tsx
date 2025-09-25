@@ -40,9 +40,6 @@ export default function BlogCategoryPage() {
     isFromDetailPage, // 是否是从详情页面返回，用于处理返回逻辑
     setIsFromDetailPage, // 设置是否是从详情页面返回
 
-    deviceLoadCount, // 设备加载次数，确保设备类型稳定后再进行数据请求
-    setDeviceLoadCount, // 设置设备加载次数的方法
-
     expandedCategories, // 展开/折叠的分类，记录哪些分类被展开或折叠
     setExpandedCategories, // 设置展开/折叠的分类
 
@@ -54,6 +51,11 @@ export default function BlogCategoryPage() {
 
     scrollTop, // 滚动高度，用于记录用户滚动的位置
     setScrollTop, // 设置滚动高度
+
+    preDeviceValue, // 设备前一个状态
+    setPreDeviceValue, // 设置设备前一个状态
+
+    hasQueryArticleList, // 是否已经查询过文章列表，用于避免重复查询
   } = useCategoryStore()
 
   const isScrollToRef = useRef(false) // 标记是否已经滚动过，避免重复滚动
@@ -65,10 +67,7 @@ export default function BlogCategoryPage() {
 
   // 初始化查询
   useEffect(() => {
-    // console.log(`isMobile:${isMobile},设备加载次数:${deviceLoadCount}`)
-    if (deviceLoadCount !== 1) {
-      setDeviceLoadCount(deviceLoadCount + 1)
-      console.log("不是第二次加载、说明设备类型还不稳定、不发送请求查询数据")
+    if (isMobile == null) {
       return
     }
 
@@ -81,7 +80,43 @@ export default function BlogCategoryPage() {
       initFetch(ROOT_CATEGORY_ID, newParams)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasInitSearch, queryParams, deviceLoadCount, isMobile])
+  }, [hasInitSearch, isMobile])
+
+  // 实时响应式PC-移动 查询文章列表
+  useEffect(() => {
+    const statusText = isMobile === null ? "未初始化" : isMobile ? "移动端设备" : "PC端设备"
+    console.log("statusText", statusText)
+    const currentDeviceValue = isMobile ? "mobile" : "pc"
+
+    if (isMobile == null) {
+      return
+    }
+
+    const pageSize = isMobile ? Mobile_PageSize : PC_PageSize
+    // 设备是否切换
+    if (preDeviceValue === currentDeviceValue) {
+      console.log("设备没有切换、不用再次发送请求查询数据")
+      setQueryParams((pre) => ({ ...pre, pageSize })) // 确保页码是最新数据
+      return
+    }
+
+    //  更新设备状态
+    setPreDeviceValue(isMobile ? "mobile" : "pc")
+    setExpandedCategories({}) // 重置分类展开状态
+
+    // 准备新的查询参数并调用查询函数
+    const newParams = {
+      pageSize,
+      pageNum: 1, // 切换设备时、或第一次查询,重置到第一页
+      categoryIds: [], // 点击的分类id列表
+    }
+    console.log("切换设备时、或第一次查询 查询数据。。。。。")
+
+    window.scrollTo(0, 0) //，滚动到顶部
+    setQueryParams(newParams) // 更新本地 state
+    queryArticleList(newParams) // 调用查询函数查询文章列表
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasQueryArticleList, isMobile, preDeviceValue])
 
   // 处理分类树默认展开折叠 PC - 全部展开  Mobile - 全部折叠
   useEffect(() => {
@@ -95,7 +130,6 @@ export default function BlogCategoryPage() {
         }, {} as Record<string, boolean>)
         setExpandedCategories({ ...allCollapsed, ...expandedCategories })
       } else {
-        // PC - 全部展开
         const allExpanded = articleCategoryList.reduce((acc, category) => {
           acc[category.categoryId] = true
           return acc
@@ -103,14 +137,15 @@ export default function BlogCategoryPage() {
         setExpandedCategories(allExpanded)
       }
     }
-    if (deviceLoadCount === 1 && !hasInitSearch) {
-      console.log("初始话状态、且设备类型已经稳定")
+
+    if (isMobile !== null && Object.keys(expandedCategories).length === 0) {
+      console.log("expandedCategories --", expandedCategories)
       // 处理展开折叠
       handleCategoriesExpansion()
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMobile, articleCategoryList, deviceLoadCount, hasInitSearch])
+  }, [isMobile, articleCategoryList.length, Object.keys(expandedCategories).length])
 
   // 处理位置
   useEffect(() => {

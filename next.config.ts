@@ -1,6 +1,7 @@
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
+  reactStrictMode: false, // 关闭严格模式
   compiler: {
     // 生产环境构建时移除 console 语句
     removeConsole:

@@ -42,12 +42,11 @@ export default function Home() {
     isFromDetailPage, // 是否是从详情页面返回，用于处理返回逻辑
     setIsFromDetailPage, // 设置是否是从详情页面返回的方法
 
-    deviceLoadCount, // 设备加载次数，确保设备类型稳定后再进行数据请求
-    setDeviceLoadCount, // 设置设备加载次数的方法
+    deviceStatue, // 当前设备状态
+    setDeviceStatue, // 设置当前设备状态
   } = useHomeStore()
   const router = useRouter()
   const isMobile = useDeviceType()
-
   const isScrollToRef = useRef(false) // 标记是否已经滚动过，避免重复滚动
   const [activeTagId, setActiveTagId] = useState<number>() // 激活的标签Id
   const [queryParams, setQueryParams] = useState<QueryParams>({
@@ -55,35 +54,55 @@ export default function Home() {
     pageNum: currentPage,
   })
 
+  // 切换设备时[屏幕实时响应式]
+  useEffect(() => {
+    const deviceStatueValue = isMobile ? "mobile" : "pc"
+    if (isMobile !== null && deviceStatue !== deviceStatueValue && hasQueryArticleList) {
+      // 准备新的查询参数并调用查询函数
+      const newParams = {
+        pageSize: isMobile ? Mobile_PageSize : PC_PageSize,
+        pageNum: 1,
+      }
+      console.log("切换设备时 查询数据。。。。。")
+      window.scrollTo(0, 0) //，滚动到顶部
+      setQueryParams(newParams) // 更新本地 state
+      setDeviceStatue(isMobile ? "mobile" : "pc")
+      queryArticleList(newParams) // 调用查询函数查询文章列表
+    }
+  }, [isMobile, deviceStatue, hasQueryArticleList])
+
   //  查询文章列表
   useEffect(() => {
-    // console.log(`isMobile:${isMobile},设备加载次数:${deviceLoadCount}`)
-    if (deviceLoadCount !== 1) {
-      setDeviceLoadCount(deviceLoadCount + 1)
-      console.log("不是第二次加载、说明设备类型还不稳定、不发送请求查询数据")
+    const statusText = isMobile === null ? "未初始化" : isMobile ? "移动端设备" : "PC端设备"
+    console.log("设备状态", statusText)
+
+    if (isMobile == null) {
       return
     }
+
+    const pageSize = isMobile ? Mobile_PageSize : PC_PageSize
     // 是否是第一次查询数据
     if (hasQueryArticleList) {
       console.log("已经发出过请求了、不用再次发送请求查询数据")
+      setQueryParams((pre) => ({ ...pre, pageSize })) // 确保页码是最新数据
       return
     }
 
     // 准备新的查询参数并调用查询函数
     const newParams = {
-      pageSize: isMobile ? Mobile_PageSize : PC_PageSize,
-      pageNum: 1, // 切换设备时、或第一次查询,重置到第一页
+      pageSize,
+      pageNum: 1, //第一次查询、重置到第一页
     }
+    console.log("初始化 查询数据。。。。。")
     setQueryParams(newParams) // 更新本地 state
     queryArticleList(newParams) // 调用查询函数查询文章列表
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasQueryArticleList, isMobile, deviceLoadCount])
+  }, [hasQueryArticleList, isMobile])
 
   // 查询右边侧边栏数据
   useEffect(() => {
     // 查询侧边栏数据（仅PC端）
-    if (isMobile) return
-    if (!hasQueryRightSiderData) queryRightSiderData()
+    if (isMobile === false && !hasQueryRightSiderData) queryRightSiderData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, hasQueryRightSiderData])
 
